@@ -302,6 +302,8 @@ def get_course_tab_list(request, course):
             if tab.type is not 'courseware':
                 continue
             tab.name = _("Entrance Exam")
+        if tab.type is 'courseware':
+            tab.name = _("Test")
         course_tab_list.append(tab)
 
     # Add in any dynamic tabs, i.e. those that are not persisted
