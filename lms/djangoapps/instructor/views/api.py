@@ -1291,6 +1291,100 @@ def get_students_features(request, course_id, csv=False):  # pylint: disable=red
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
+def get_students_profile_with_survey(request, course_id, csv=False):  # pylint: disable=redefined-outer-name
+    """
+    Respond with json which contains a summary of all enrolled students
+    profile information with candidate survey data.
+
+    Responds with JSON
+        {"students": [{-student-info-}, ...]}
+
+    TO DO accept requests for different attribute sets.
+    """
+    course_key = CourseKey.from_string(course_id)
+    course = get_course_by_id(course_key)
+
+    available_features = instructor_analytics.basic.AVAILABLE_FEATURES
+
+    # Allow for sites to be able to define additional columns.
+    # Note that adding additional columns has the potential to break
+    # the student profile report due to a character limit on the
+    # asynchronous job input which in this case is a JSON string
+    # containing the list of columns to include in the report.
+    # TODO: Refactor the student profile report code to remove the list of columns
+    # that should be included in the report from the asynchronous job input.
+    # We need to clone the list because we modify it below
+    query_features = list(configuration_helpers.get_value('student_profile_download_fields', []))
+
+    if not query_features:
+        query_features = [
+            'id', 'username', 'name', 'email', 'language', 'location',
+            'year_of_birth', 'gender', 'level_of_education', 'mailing_address',
+            'goals',
+        ]
+
+    # Provide human-friendly and translatable names for these features. These names
+    # will be displayed in the table generated in data_download.coffee. It is not (yet)
+    # used as the header row in the CSV, but could be in the future.
+    query_features_names = {
+        'id': _('User ID'),
+        'username': _('Username'),
+        'name': _('Name'),
+        'email': _('Email'),
+        'language': _('Language'),
+        'location': _('Location'),
+        'year_of_birth': _('Birth Year'),
+        'gender': _('Gender'),
+        'level_of_education': _('Level of Education'),
+        'mailing_address': _('Mailing Address'),
+        'goals': _('Goals'),
+    }
+
+    if is_course_cohorted(course.id):
+        # Translators: 'Cohort' refers to a group of students within a course.
+        query_features.append('cohort')
+        query_features_names['cohort'] = _('Cohort')
+
+    if course.teams_enabled:
+        query_features.append('team')
+        query_features_names['team'] = _('Team')
+
+    # For compatibility reasons, city and country should always appear last.
+    query_features.append('city')
+    query_features_names['city'] = _('City')
+    query_features.append('country')
+    query_features_names['country'] = _('Country')
+
+    if not csv:
+        student_data = instructor_analytics.basic.enrolled_students_features(course_key, query_features)
+        response_payload = {
+            'course_id': unicode(course_key),
+            'students': student_data,
+            'students_count': len(student_data),
+            'queried_features': query_features,
+            'feature_names': query_features_names,
+            'available_features': available_features,
+        }
+        return JsonResponse(response_payload)
+    else:
+        try:
+            instructor_task.api.submit_calculate_students_features_with_survey_csv(request, course_key, query_features)
+            success_status = _("The enrolled learner profile report with survey data is being created."
+                               " To view the status of the report, see Pending Tasks below.")
+            return JsonResponse({"status": success_status})
+        except AlreadyRunningError:
+            already_running_status = _(
+                "This enrollment report is currently being created."
+                " To view the status of the report, see Pending Tasks below."
+                " You will be able to download the report when it is complete.")
+            return JsonResponse({"status": already_running_status})
+
+
+@transaction.non_atomic_requests
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
 def get_students_who_may_enroll(request, course_id):
     """
     Initiate generation of a CSV file containing information about

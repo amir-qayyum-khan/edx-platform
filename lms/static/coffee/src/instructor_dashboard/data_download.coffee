@@ -74,6 +74,7 @@ class DataDownload
     # gather elements
     @$list_studs_btn = @$section.find("input[name='list-profiles']")
     @$list_studs_csv_btn = @$section.find("input[name='list-profiles-csv']")
+    @$list_students_survey_csv_btn = @$section.find("input[name='list-profiles-with-survey-csv']")
     @$list_proctored_exam_results_csv_btn = @$section.find("input[name='proctored-exam-results-report']")
     @$survey_results_csv_btn = @$section.find("input[name='survey-results-report']")
     @$list_may_enroll_csv_btn = @$section.find("input[name='list-may-enroll-csv']")
@@ -160,6 +161,26 @@ class DataDownload
         url: url
         error: (std_ajax_err) =>
           @$reports_request_response_error.text gettext("Error generating student profile information. Please try again.")
+          $(".msg-error").css({"display":"block"})
+        success: (data) =>
+          @$reports_request_response.text data['status']
+          $(".msg-confirm").css({"display":"block"})
+
+    # this handler binds to download profile with survey csv button
+    @$list_students_survey_csv_btn.click (e) =>
+      @clear_display()
+
+      url = @$list_students_survey_csv_btn.data 'endpoint'
+      # handle csv special case
+      # redirect the document to the csv file.
+      url += '/csv'
+
+      $.ajax
+        type: 'POST'
+        dataType: 'json'
+        url: url
+        error: (std_ajax_err) =>
+          @$reports_request_response_error.text gettext("Error generating student profile with survey information. Please try again.")
           $(".msg-error").css({"display":"block"})
         success: (data) =>
           @$reports_request_response.text data['status']
