@@ -21,8 +21,11 @@
                     $('#login').trigger("click");
                 }
                 $(".hero-static").css("display", "table");
-
-                var exam_starts_in = (new Date('2017-02-25 15:00:00') - new Date()) / 1000;
+                //firefox evaluates time differently than chrome/safari in terms of timezones
+                //javascript don't have any way to provide timezone
+                //giving 10:00:00 instead of 15:00:00 (3:00 PM required) is hack
+                //to nullify GMT+5 of PKT. Need to use moment or other library.
+                var exam_starts_in = (new Date('25 FEB 2017 10:00:00 GMT') - new Date()) / 1000;
                 var clock = $('.clock').FlipClock(exam_starts_in, {
                 clockFace: 'DailyCounter',
                 countdown: true
