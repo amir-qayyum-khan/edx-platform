@@ -182,9 +182,14 @@ from openedx.core.djangolib.markup import HTML, Text
                     ${ reference_formset.management_form }
                     <label>${get_label('references')}
                     %if reference_formset.errors:
-                        %for key in reference_formset.errors[0].keys():
-                            <span class="error-message-title">&nbsp; ${reference_formset.errors[0][key][0]}</span>
-                            <% break %>
+                        %for error in reference_formset.errors:
+                            %if error:
+                                %for key in error.keys():
+                                    <span class="error-message-title">&nbsp; ${error[key][0]}</span>
+                                    <% break %>
+                                %endfor
+                                <% break %>
+                            %endif
                         %endfor
                     %endif
                     </label>
@@ -208,7 +213,7 @@ from openedx.core.djangolib.markup import HTML, Text
                     </table>
                 </div>
                 <div class="form-group">
-                    <button type="submit" class="action action-primary">Submit Your details</button>
+                    <button type="submit" class="action action-primary">Submit your details</button>
                 </div>
             </form>
           </div>
