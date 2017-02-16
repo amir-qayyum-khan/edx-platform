@@ -89,7 +89,7 @@ class CandidateProfileForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super(CandidateProfileForm, self).clean()
 
-        phone_number = cleaned_data.get('phone_number')
+        phone_number = cleaned_data.get('phone_number', '')
         if not re.match('^[0-9-+]*$', phone_number):
             self.add_error('phone_number', forms.ValidationError("Valid phone number contains +,- and numbers."))
             raise forms.ValidationError("Valid phone number contains +,- and numbers.")
