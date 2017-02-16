@@ -52,6 +52,7 @@ from courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from courseware.module_render import get_module_for_descriptor_internal
 from instructor_analytics.basic import (
     enrolled_students_features,
+    enrolled_students_features_with_candidate_survey,
     get_proctored_exam_results,
     list_may_enroll,
     list_problem_responses
@@ -1006,6 +1007,54 @@ def upload_students_csv(_xmodule_instance_args, _entry_id, course_id, task_input
 
     # Perform the upload
     upload_csv_to_report_store(rows, 'student_profile_info', course_id, start_date)
+
+    return task_progress.update_task_state(extra_meta=current_step)
+
+
+def upload_students_profile_with_survey_csv(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    """
+    For a given `course_id`, generate a CSV file containing profile
+    information with survey for all students that are enrolled, and store
+    using a `ReportStore`.
+    """
+    start_time = time()
+    start_date = datetime.now(UTC)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    task_progress = TaskProgress(action_name, enrolled_students.count(), start_time)
+
+    current_step = {'step': 'Calculating Profile Info With Survey Data'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    query_features = task_input
+
+    # include candidate profile features
+    candidate_profile_features = [
+        'graduation_date', 'phone_number', 'cgpa', 'position_in_class', 'academic_projects',
+        'extra_curricular_activities', 'freelance_work', 'accomplishment', 'individuality_factor',
+        'ideal_organization', 'why_arbisoft', 'expected_salary', 'career_plan', 'other_studied_course',
+        'other_technology'
+    ]
+    query_features += candidate_profile_features
+
+    # include candidate profile related features
+    candidate_profile_related_features = [
+        'candidate_courses', 'candidate_expertises', 'candidate_technologies', 'candidate_references'
+    ]
+    query_features += candidate_profile_related_features
+
+    # compute the student features table and format it
+    student_data = enrolled_students_features_with_candidate_survey(course_id, query_features)
+    header, rows = format_dictlist(student_data, query_features)
+    task_progress.attempted = task_progress.succeeded = len(rows)
+    task_progress.skipped = task_progress.total - task_progress.attempted
+
+    rows.insert(0, header)
+
+    current_step = {'step': 'Uploading Profile Info With Survey Data CSV'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    # Perform the upload
+    upload_csv_to_report_store(rows, 'student_profile_info_with_survey_data', course_id, start_date)
 
     return task_progress.update_task_state(extra_meta=current_step)
 

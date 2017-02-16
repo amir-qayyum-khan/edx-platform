@@ -280,6 +280,147 @@ def enrolled_students_features(course_key, features):
     return [extract_student(student, features) for student in students]
 
 
+def enrolled_students_features_with_candidate_survey(course_key, features):
+    """
+    Return a list of student profile features with the candidate survey fields
+    as dictionaries.
+
+    Example:
+        >>> enrolled_students_candidate_profiles(course_key, ['graduation_date', 'cgpa'])
+        [
+            {'username': 'username1', 'first_name': 'firstname1', 'cgpa': '3.30'},
+            {'username': 'username2', 'first_name': 'firstname2', 'cgpa': '3.52'}
+        ]
+    """
+    include_cohort_column = 'cohort' in features
+    include_team_column = 'team' in features
+
+    include_candidate_courses = 'candidate_courses' in features
+    include_candidate_expertises = 'candidate_expertises' in features
+    include_candidate_technologies = 'candidate_technologies' in features
+    include_candidate_references = 'candidate_references' in features
+
+    students = User.objects.filter(
+        courseenrollment__course_id=course_key,
+        courseenrollment__is_active=1,
+    ).order_by('username').select_related('profile')
+
+    if include_cohort_column:
+        students = students.prefetch_related('course_groups')
+
+    if include_team_column:
+        students = students.prefetch_related('teams')
+
+    def extract_attr(student, feature):
+        """
+        Evaluate a student attribute that is ready for JSON serialization.
+        """
+        attr = getattr(student, feature)
+        try:
+            DjangoJSONEncoder().default(attr)
+            return attr
+        except TypeError:
+            return unicode(attr)
+
+    def extract_student(student, features):
+        """
+        Convert student to dictionary.
+        """
+        student_features = [x for x in STUDENT_FEATURES if x in features]
+        profile_features = [x for x in PROFILE_FEATURES if x in features]
+
+        # For data extractions on the 'meta' field
+        # the feature name should be in the format of 'meta.foo' where
+        # 'foo' is the keyname in the meta dictionary
+        meta_features = []
+        for feature in features:
+            if 'meta.' in feature:
+                meta_key = feature.split('.')[1]
+                meta_features.append((feature, meta_key))
+
+        student_dict = dict((feature, extract_attr(student, feature))
+                            for feature in student_features)
+        profile = student.profile
+        if profile is not None:
+            profile_dict = dict((feature, extract_attr(profile, feature))
+                                for feature in profile_features)
+            student_dict.update(profile_dict)
+
+            # now featch the requested meta fields
+            meta_dict = json.loads(profile.meta) if profile.meta else {}
+            for meta_feature, meta_key in meta_features:
+                student_dict[meta_feature] = meta_dict.get(meta_key)
+
+        if include_cohort_column:
+            # Note that we use student.course_groups.all() here instead of
+            # student.course_groups.filter(). The latter creates a fresh query,
+            # therefore negating the performance gain from prefetch_related().
+            student_dict['cohort'] = next(
+                (cohort.name for cohort in student.course_groups.all() if cohort.course_id == course_key),
+                "[unassigned]"
+            )
+
+        if include_team_column:
+            student_dict['team'] = next(
+                (team.name for team in student.teams.all() if team.course_id == course_key),
+                UNAVAILABLE
+            )
+        return student_dict
+
+    def extract_candidate_profile(student, features):
+        """
+        Return candidate survey data as dictionary for the provided student.
+        """
+        if not hasattr(student, 'arbisoft_profile'):
+            return {}
+
+        candidate_profile_meta_features = [
+            field.name for field in student.arbisoft_profile._meta.get_fields()
+        ]
+
+        candidate_profile_features = [x for x in candidate_profile_meta_features if x in features]
+        candidate_profile_dict = dict(
+            (feature, extract_attr(student.arbisoft_profile, feature))
+            for feature in candidate_profile_features
+        )
+
+        if include_candidate_courses:
+            candidate_profile_dict['candidate_courses'] = ', '.join(
+                student.arbisoft_profile.candidatecourse_set.all().values_list('studied_course', flat=True)
+            )
+
+        if include_candidate_expertises:
+            candidate_expertises = ', '.join([
+                '{} [Rank {}]'.format(expertise.expertise, expertise.rank)
+                for expertise in student.arbisoft_profile.candidateexpertise_set.all()
+            ])
+            candidate_profile_dict['candidate_expertises'] = candidate_expertises
+
+        if include_candidate_technologies:
+            candidate_technologies = ', '.join(
+                student.arbisoft_profile.candidatetechnology_set.all().values_list('technology', flat=True)
+            )
+            candidate_profile_dict['candidate_technologies'] = candidate_technologies
+
+        if include_candidate_references:
+            candidate_references = ', '.join([
+                '{} [{} | {}]'.format(reference.name, reference.position, reference.phone_number)
+                for reference in student.arbisoft_profile.candidatereference_set.all()
+            ])
+            candidate_profile_dict['candidate_references'] = candidate_references
+
+        return candidate_profile_dict
+
+    student_features_with_survey_values = []
+    for student in students:
+        features_data = {}
+        features_data.update(extract_student(student, features))
+        features_data.update(extract_candidate_profile(student, features))
+        student_features_with_survey_values.append(features_data)
+
+    return student_features_with_survey_values
+
+
 def list_may_enroll(course_key, features):
     """
     Return info about students who may enroll in a course as a dict.

@@ -563,6 +563,9 @@ def _section_data_download(course, access):
         'get_problem_responses_url': reverse('get_problem_responses', kwargs={'course_id': unicode(course_key)}),
         'get_grading_config_url': reverse('get_grading_config', kwargs={'course_id': unicode(course_key)}),
         'get_students_features_url': reverse('get_students_features', kwargs={'course_id': unicode(course_key)}),
+        'get_students_profile_with_survey_url': reverse(
+            'get_students_profile_with_survey', kwargs={'course_id': unicode(course_key)}
+        ),
         'get_issued_certificates_url': reverse(
             'get_issued_certificates', kwargs={'course_id': unicode(course_key)}
         ),
