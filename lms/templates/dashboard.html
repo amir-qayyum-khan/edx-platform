@@ -107,12 +107,12 @@ from openedx.core.djangolib.markup import HTML, Text
           <div class="empty-dashboard-message">
             <p>${_("You are not enrolled in any courses yet.")}</p>
 
-            % if settings.FEATURES.get('COURSES_ARE_BROWSABLE'):
-              <a href="${marketing_link('COURSES')}">
-                ${_("Explore courses")}
-              </a>
-
-            %endif
+##             % if settings.FEATURES.get('COURSES_ARE_BROWSABLE'):
+##               <a href="${marketing_link('COURSES')}">
+##                 ${_("Explore courses")}
+##               </a>
+##
+##             %endif
         </div>
         % endif
 

@@ -635,10 +635,6 @@ def arbisoft_survey(request):
                     CandidateTechnology(candidate=profile, technology=technology)
                     for technology in technologies
                 ])
-
-                # make user active here
-                if not user.is_active:
-                    user.is_active = True
                 user.save()
 
                 # enroll user in course
@@ -2169,6 +2165,15 @@ def activate_account(request, key):
 
         # Enroll student in any pending courses he/she may have if auto_enroll flag is set
         _enroll_user_in_pending_courses(regs[0].user)
+
+        # enroll user in course
+        user = regs[0].user
+        try:
+            course_id = settings.ARBISOFT_FRESH_GRAD_COURSE_ID
+            if not get_enrollment(user.username, course_id):
+                add_enrollment(user.username, course_id)
+        except CourseEnrollmentClosedError:
+            log.exception("unable to enroll user %s in course %s", user.username, course_id)
 
         resp = render_to_response(
             "registration/activation_complete.html",
