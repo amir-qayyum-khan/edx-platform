@@ -295,6 +295,11 @@ def enrolled_students_features_with_candidate_survey(course_key, features):
     include_cohort_column = 'cohort' in features
     include_team_column = 'team' in features
 
+    include_candidate_courses = 'candidate_courses' in features
+    include_candidate_expertises = 'candidate_expertises' in features
+    include_candidate_technologies = 'candidate_technologies' in features
+    include_candidate_references = 'candidate_references' in features
+
     students = User.objects.filter(
         courseenrollment__course_id=course_key,
         courseenrollment__is_active=1,
@@ -378,6 +383,32 @@ def enrolled_students_features_with_candidate_survey(course_key, features):
             (feature, extract_attr(student.arbisoft_profile, feature))
             for feature in candidate_profile_features
         )
+
+        if include_candidate_courses:
+            candidate_profile_dict['candidate_courses'] = ', '.join(
+                student.arbisoft_profile.candidatecourse_set.all().values_list('studied_course', flat=True)
+            )
+
+        if include_candidate_expertises:
+            candidate_expertises = ', '.join([
+                '{} [Rank {}]'.format(expertise.expertise, expertise.rank)
+                for expertise in student.arbisoft_profile.candidateexpertise_set.all()
+            ])
+            candidate_profile_dict['candidate_expertises'] = candidate_expertises
+
+        if include_candidate_technologies:
+            candidate_technologies = ', '.join(
+                student.arbisoft_profile.candidatetechnology_set.all().values_list('technology', flat=True)
+            )
+            candidate_profile_dict['candidate_technologies'] = candidate_technologies
+
+        if include_candidate_references:
+            candidate_references = ', '.join([
+                '{} [{} | {}]'.format(reference.name, reference.position, reference.phone_number)
+                for reference in student.arbisoft_profile.candidatereference_set.all()
+            ])
+            candidate_profile_dict['candidate_references'] = candidate_references
+
         return candidate_profile_dict
 
     student_features_with_survey_values = []

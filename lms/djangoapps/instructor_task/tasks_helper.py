@@ -1036,6 +1036,12 @@ def upload_students_profile_with_survey_csv(_xmodule_instance_args, _entry_id, c
     ]
     query_features += candidate_profile_features
 
+    # include candidate profile related features
+    candidate_profile_related_features = [
+        'candidate_courses', 'candidate_expertises', 'candidate_technologies', 'candidate_references'
+    ]
+    query_features += candidate_profile_related_features
+
     # compute the student features table and format it
     student_data = enrolled_students_features_with_candidate_survey(course_id, query_features)
     header, rows = format_dictlist(student_data, query_features)
