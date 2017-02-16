@@ -492,9 +492,9 @@ class CandidateReference(models.Model):
     Model to store reference's profile for candidate user.
     """
     candidate = models.ForeignKey(CandidateProfile, on_delete=models.CASCADE, null=True)
-    name = models.CharField(max_length=255, blank=False, null=False, db_index=True)
-    phone_number = models.CharField(max_length=20, blank=False, null=False)
-    position = models.CharField(max_length=255, blank=False, null=False)
+    name = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    position = models.CharField(max_length=255, blank=True, null=True)
 
 
 

@@ -130,16 +130,16 @@ class CandidateReferenceForm(forms.ModelForm):
             'phone_number',
         )
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'input-block', 'required': 'true', 'maxlength': 255}),
-            'position': forms.TextInput(attrs={'class': 'input-block', 'required': 'true', 'maxlength': 255}),
-            'phone_number': forms.TextInput(attrs={'class': 'input-block', 'required': 'true', 'maxlength': 20}),
+            'name': forms.TextInput(attrs={'class': 'input-block', 'maxlength': 255}),
+            'position': forms.TextInput(attrs={'class': 'input-block', 'maxlength': 255}),
+            'phone_number': forms.TextInput(attrs={'class': 'input-block', 'maxlength': 20}),
         }
 
     def clean(self):
         cleaned_data = super(CandidateReferenceForm, self).clean()
 
         phone_number = cleaned_data.get('phone_number')
-        if not re.match('^[0-9-+]*$', phone_number):
+        if phone_number and not re.match('^[0-9-+]*$', phone_number):
             self.add_error('phone_number', forms.ValidationError("Valid phone number contains +,- and numbers."))
             raise forms.ValidationError("Valid phone number contains +,- and numbers.")
 
